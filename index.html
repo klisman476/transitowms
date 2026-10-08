@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard TRANSITOWMS</title>
+  
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+  <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+
+  <style>
+    :root {
+      --bg-dark: #121824;
+      --card-bg: #1e2738;
+      --sidebar-bg: #17202e;
+      --neon-cyan: #00f3ff;
+      --neon-green: #00ff87;
+      --neon-yellow: #ffea00;
+      --neon-red: #ff2a6d;
+      --text-main: #e2e8f0;
+      --text-muted: #94a3b8;
+      --border-color: #2e3a50;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background-color: var(--bg-dark); color: var(--text-main); display: flex; min-height: 100vh; }
+
+    .sidebar {
+      width: 250px;
+      background-color: var(--sidebar-bg);
+      border-right: 1px solid var(--border-color);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .btn-volver {
+      background: #253346;
+      color: var(--neon-cyan);
+      border: 1px solid var(--neon-cyan);
+      padding: 12px;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: all 0.3s;
+    }
+
+    .btn-volver:hover {
+      box-shadow: 0 0 10px var(--neon-cyan);
+      background: var(--neon-cyan);
+      color: #000;
+    }
+
+    .sidebar-section {
+      background: var(--card-bg);
+      border: 1px solid var(--neon-yellow);
+      border-radius: 10px;
+      padding: 15px;
+      box-shadow: 0 0 8px rgba(255, 234, 0, 0.2);
+    }
+
+    .sidebar-section h3 {
+      color: var(--neon-yellow);
+      font-size: 0.9rem;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+    }
+
+    .sucursales-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .sucursal-item {
+      background: rgba(255, 234, 0, 0.05);
+      border: 1px solid rgba(255, 234, 0, 0.2);
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      color: #fff;
+      display: flex;
+      justify-content: space-between;
+      cursor: pointer;
+    }
+
+    .sucursal-item:hover {
+      border-color: var(--neon-yellow);
+      background: rgba(255, 234, 0, 0.2);
+    }
+
+    .main-content {
+      flex: 1;
+      padding: 25px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 25px;
+    }
+
+    .kpi-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 15px;
+    }
+
+    .kpi-card {
+      background: var(--card-bg);
+      border: 1px solid #ffffff33;
+      border-radius: 12px;
+      padding: 20px;
+    }
+
+    .kpi-title { font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; }
+    .kpi-value { font-size: 1.8rem; font-weight: bold; color: #fff; margin: 10px 0; }
+    .kpi-sub { font-size: 0.75rem; color: var(--neon-cyan); }
+
+    .charts-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    .chart-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 20px;
+    }
+
+    .chart-card h3 { font-size: 1rem; margin-bottom: 15px; color: var(--neon-cyan); }
+
+    .table-container {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 20px;
+    }
+
+    table.dataTable { width: 100% !important; color: var(--text-main) !important; }
+    table.dataTable thead th { background-color: #17202e !important; color: var(--neon-cyan) !important; }
+    table.dataTable tbody tr { background-color: var(--card-bg) !important; }
+
+    .alert-red { background-color: rgba(255, 42, 109, 0.3) !important; color: #ff85a2 !important; font-weight: bold; }
+    .alert-yellow { background-color: rgba(255, 234, 0, 0.25) !important; color: #ffea00 !important; }
+
+    .dataTables_wrapper .dataTables_length, 
+    .dataTables_wrapper .dataTables_filter,
+    .dataTables_wrapper .dataTables_info,
+    .dataTables_wrapper .dataTables_paginate { color: var(--text-main) !important; }
+    .dataTables_wrapper .dataTables_filter input { background: #121824; border: 1px solid var(--border-color); color: #fff; padding: 5px 10px; border-radius: 6px; }
+  </style>
+</head>
+<body>
+
+  <div class="sidebar">
+    <button class="btn-volver" onclick="resetFilters()">
+      <span>&#8592;</span> VOLVER / TODO
+    </button>
+    <div class="sidebar-section">
+      <h3>SUCURSALES</h3>
+      <div class="sucursales-list" id="sucursalesList"></div>
+    </div>
+  </div>
+
+  <div class="main-content">
+    <div class="kpi-container" id="kpiContainer"></div>
+
+    <div class="charts-grid">
+      <div class="chart-card">
+        <h3>Línea de Tiempo - Fecha de Transacción</h3>
+        <canvas id="lineChart"></canvas>
+      </div>
+      <div class="chart-card">
+        <h3>Top Proveedores (Cant. Enviada)</h3>
+        <canvas id="barChart"></canvas>
+      </div>
+    </div>
+
+    <div class="table-container">
+      <h3 style="margin-bottom: 15px; color: var(--neon-cyan);">Detalle de Envíos</h3>
+      <table id="enviosTable" class="display responsive nowrap">
+        <thead>
+          <tr>
+            <th>Fecha Trans.</th>
+            <th>Sucursal</th>
+            <th>Tipo</th>
+            <th>Motivo</th>
+            <th>ASN</th>
+            <th>Proveedor</th>
+            <th>LPN</th>
+            <th>Código</th>
+            <th>Descripción</th>
+            <th>Cant. Enviada</th>
+            <th>Días Envío</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    const SHEET_ID = '1ub-0piL7rmE0a1TFePnoWckJAvpDxvHA-2IELGaoqeI';
+    const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json`;
+
+    let globalData = [];
+    let tableInstance = null;
+    let lineChart = null;
+    let barChart = null;
+
+    $(document).ready(() => {
+      fetchData();
+      setInterval(fetchData, 30000);
+    });
+
+    async function fetchData() {
+      try {
+        const res = await fetch(SHEET_URL);
+        const text = await res.text();
+        const json = JSON.parse(text.substr(47).slice(0, -2));
+        processRows(json.table.rows);
+      } catch (err) {
+        console.error("Error cargando los datos:", err);
+      }
+    }
+
+    function processRows(rows) {
+      const today = new Date();
+      globalData = [];
+
+      rows.forEach((r, idx) => {
+        if (idx === 0) return;
+        const c = r.c;
+        if (!c || !c[1] || !c[1].v) return;
+
+        const fechaStr = c[2]?.f || c[2]?.v || '';
+        let diasEnvio = 0;
+
+        if (fechaStr) {
+          const parts = fechaStr.toString().split('/');
+          if (parts.length === 3) {
+            const fechaTrans = new Date(parts[2], parts[1] - 1, parts[0]);
+            const diffTime = Math.abs(today - fechaTrans);
+            diasEnvio = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          }
+        }
+
+        globalData.push({
+          cedis: c[0]?.v || '',
+          asn: c[1]?.v || '',
+          fecha: fechaStr,
+          recepcion: c[3]?.v || '',
+          sucursal: c[4]?.v || '',
+          codigo: c[5]?.v || '',
+          descripcion: c[6]?.v || '',
+          cantidad: Number(c[7]?.v || 0),
+          motivo: c[11]?.v || '',
+          proveedor: c[12]?.v || '',
+          tipo: c[14]?.v || '',
+          lpn: c[17]?.v || '',
+          diasEnvio: diasEnvio
+        });
+      });
+
+      updateDashboard(globalData);
+    }
+
+    function updateDashboard(data) {
+      renderSucursales(data);
+      renderKPIs(data);
+      renderLineChart(data);
+      renderBarChart(data);
+      renderTable(data);
+    }
+
+    function renderSucursales(data) {
+      const sucursales = [...new Set(data.map(d => d.sucursal))].filter(Boolean);
+      const container = $('#sucursalesList');
+      container.empty();
+
+      sucursales.forEach(suc => {
+        const count = data.filter(d => d.sucursal === suc).length;
+        container.append(`
+          <div class="sucursal-item" onclick="filterBySucursal('${suc}')">
+            <span>${suc}</span>
+            <span style="font-weight:bold; color:var(--neon-yellow);">${count}</span>
+          </div>
+        `);
+      });
+    }
+
+    function renderKPIs(data) {
+      const tiposEnvio = [...new Set(data.map(d => d.tipo))].filter(Boolean);
+      const container = $('#kpiContainer');
+      container.empty();
+
+      tiposEnvio.forEach(tipo => {
+        const itemsTipo = data.filter(d => d.tipo === tipo);
+        const cantTotal = itemsTipo.reduce((sum, d) => sum + d.cantidad, 0);
+        const totalASN = new Set(itemsTipo.map(d => d.asn)).size;
+
+        container.append(`
+          <div class="kpi-card">
+            <div class="kpi-title">TIPO: ${tipo}</div>
+            <div class="kpi-value">${cantTotal.toLocaleString()} <span style="font-size:1rem; color:var(--text-muted);">uds</span></div>
+            <div class="kpi-sub">Total ASN: <strong>${totalASN}</strong></div>
+          </div>
+        `);
+      });
+    }
+
+    function renderLineChart(data) {
+      const fechasMap = {};
+      data.forEach(d => {
+        if (d.fecha) {
+          fechasMap[d.fecha] = (fechasMap[d.fecha] || 0) + d.cantidad;
+        }
+      });
+
+      const labels = Object.keys(fechasMap);
+      const values = Object.values(fechasMap);
+
+      const ctx = document.getElementById('lineChart').getContext('2d');
+      if (lineChart) lineChart.destroy();
+
+      lineChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Cantidad Enviada',
+            data: values,
+            borderColor: '#00f3ff',
+            backgroundColor: 'rgba(0, 243, 255, 0.1)',
+            fill: true,
+            tension: 0.3,
+            pointBackgroundColor: '#ffea00',
+            pointRadius: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { labels: { color: '#e2e8f0' } } },
+          scales: {
+            x: { ticks: { color: '#94a3b8' }, grid: { color: '#2e3a50' } },
+            y: { ticks: { color: '#94a3b8' }, grid: { color: '#2e3a50' } }
+          }
+        }
+      });
+    }
+
+    function renderBarChart(data) {
+      const provMap = {};
+      data.forEach(d => {
+        if (d.proveedor) {
+          provMap[d.proveedor] = (provMap[d.proveedor] || 0) + d.cantidad;
+        }
+      });
+
+      const sorted = Object.entries(provMap).sort((a,b) => b[1] - a[1]).slice(0, 10);
+      const labels = sorted.map(s => s[0]);
+      const values = sorted.map(s => s[1]);
+
+      const ctx = document.getElementById('barChart').getContext('2d');
+      if (barChart) barChart.destroy();
+
+      barChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Cantidad Enviada',
+            data: values,
+            backgroundColor: 'rgba(0, 255, 135, 0.7)',
+            borderColor: '#00ff87',
+            borderWidth: 1
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          plugins: { legend: { labels: { color: '#e2e8f0' } } },
+          scales: {
+            x: { ticks: { color: '#94a3b8' }, grid: { color: '#2e3a50' } },
+            y: { ticks: { color: '#94a3b8' }, grid: { color: '#2e3a50' } }
+          }
+        }
+      });
+    }
+
+    function renderTable(data) {
+      if (tableInstance) {
+        tableInstance.destroy();
+      }
+
+      const tbody = $('#enviosTable tbody');
+      tbody.empty();
+
+      data.forEach(d => {
+        tbody.append(`
+          <tr>
+            <td>${d.fecha}</td>
+            <td>${d.sucursal}</td>
+            <td>${d.tipo}</td>
+            <td>${d.motivo}</td>
+            <td>${d.asn}</td>
+            <td>${d.proveedor}</td>
+            <td>${d.lpn}</td>
+            <td>${d.codigo}</td>
+            <td>${d.descripcion}</td>
+            <td>${d.cantidad}</td>
+            <td>${d.diasEnvio} días</td>
+          </tr>
+        `);
+      });
+
+      tableInstance = $('#enviosTable').DataTable({
+        pageLength: 10,
+        responsive: true,
+        language: {
+          search: "Buscar rápido:",
+          lengthMenu: "Mostrar _MENU_ registros",
+          info: "Mostrando _START_ a _END_ de _TOTAL_ registros",
+          paginate: { next: "Siguiente", previous: "Anterior" }
+        },
+        createdRow: function(row, dataData) {
+          const dias = parseInt(dataData[10]);
+          if (dias > 13) {
+            $(row).addClass('alert-red');
+          } else if (dias >= 12) {
+            $(row).addClass('alert-yellow');
+          }
+        }
+      });
+    }
+
+    function filterBySucursal(sucursal) {
+      if (tableInstance) {
+        tableInstance.column(1).search(sucursal).draw();
+      }
+    }
+
+    function resetFilters() {
+      if (tableInstance) {
+        tableInstance.search('').columns().search('').draw();
+      }
+    }
+  </script>
+</body>
+</html>
